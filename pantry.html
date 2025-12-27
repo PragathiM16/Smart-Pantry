@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="overlay">
+<h2>🥗 My Pantry</h2>
+
+<div class="card">
+<form method="POST" action="/add">
+
+<label><b>Food Item Name</b></label>
+<input name="name" placeholder="Enter food item" required>
+
+<label><b>Expiry Date</b></label>
+<input type="date" name="expiry" id="expiry" required>
+
+<button type="submit">➕ Add Item</button>
+</form>
+</div>
+
+{% for item in items %}
+<div class="pantry-item">
+  <!-- Use actual image from Pixabay -->
+  <img src="{{ item.image }}">
+
+  <div>
+    <b>{{ item.name }}</b><br>
+    Expires on: {{ item.expiry }}<br>
+
+    <a href="/delete/{{ item._id }}" onclick="return confirm('Remove this item?')">
+      🗑 Remove
+    </a>
+  </div>
+</div>
+{% endfor %}
+
+<a href="/logout">
+<button style="width:200px;">Logout</button>
+</a>
+
+</div>
+
+<!-- CALENDAR LOGIC -->
+<script>
+  const today = new Date().toISOString().split("T")[0];
+  document.getElementById("expiry").setAttribute("min", today);
+  document.getElementById("expiry").value = today;
+</script>
+
+</body>
+</html>

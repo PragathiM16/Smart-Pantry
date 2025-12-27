@@ -1,0 +1,104 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Background on all pages */
+body {
+    background: url("/static/bg.png") no-repeat center center fixed;
+    background-size: cover;
+}
+
+/* Dark overlay */
+.overlay {
+    min-height: 100vh;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+/* Card */
+.card {
+    background: rgba(86, 21, 18, 0.944);
+    width: 340px;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Inputs */
+input {
+    width: 90%;
+    padding: 12px;
+    margin: 10px 0;
+    border-radius: 6px;
+    border: none;
+}
+
+/* Buttons */
+button {
+    width: 95%;
+    padding: 12px;
+    margin-top: 15px;
+    background: linear-gradient(to right, #18771c, #0e7a14);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+/* Password eye */
+.password-box {
+    position: relative;
+}
+
+.password-box span {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    cursor: pointer;
+}
+
+/* Pantry items */
+.pantry-item {
+    background: white;
+    color: black;
+    width: 90%;
+    max-width: 600px;
+    padding: 15px;
+    margin: 10px auto;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.pantry-item img {
+    width: 70px;
+    height: 70px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+/* Mobile support */
+@media (max-width: 600px) {
+    .card {
+        width: 90%;
+    }
+    .pantry-item {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+

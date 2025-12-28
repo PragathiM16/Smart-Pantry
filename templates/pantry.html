@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+<div class="overlay">
+
+<h2>🥗 Smart Pantry Dashboard</h2>
+
+<!-- STATS -->
+<div class="stats">
+  <div>Total Items<br><b>{{ stats.total }}</b></div>
+  <div>Expiring Soon<br><b>{{ stats.expiring_soon }}</b></div>
+  <div>Safe Items<br><b>{{ stats.safe }}</b></div>
+</div>
+
+<!-- GRAPH -->
+<canvas id="pantryChart" width="300"></canvas>
+
+<script>
+new Chart(document.getElementById('pantryChart'), {
+  type: 'pie',
+  data: {
+    labels: ['Safe', 'Expiring Soon'],
+    datasets: [{
+      data: [{{ stats.safe }}, {{ stats.expiring_soon }}],
+      backgroundColor: ['#2ecc71', '#e67e22']
+    }]
+  }
+});
+</script>
+
+<!-- ADD ITEM -->
+<div class="card">
+<form method="POST" action="/add">
+<input name="name" placeholder="Food name" required>
+<input type="date" name="expiry" required>
+<button>Add Item</button>
+</form>
+</div>
+
+<!-- SEARCH -->
+<input type="text" id="search" placeholder="Search food..." onkeyup="filterItems()">
+
+<!-- ITEMS -->
+<div id="items">
+{% for item in items %}
+<div class="pantry-item {{ 'danger' if item.days_left <= 3 else 'warning' if item.days_left <= 7 else 'safe' }}">
+<img src="{{ item.image }}">
+<div>
+<b>{{ item.name }}</b><br>
+Expires: {{ item.expiry }}<br>
+Days left: {{ item.days_left }}<br>
+<a href="/delete/{{ item._id }}">🗑 Remove</a>
+</div>
+</div>
+{% endfor %}
+</div>
+
+<a href="/logout"><button>Logout</button></a>
+
+</div>
+
+<script>
+function filterItems() {
+  let q = document.getElementById("search").value.toLowerCase();
+  document.querySelectorAll(".pantry-item").forEach(i=>{
+    i.style.display = i.innerText.toLowerCase().includes(q) ? "flex" : "none";
+  });
+}
+</script>
+
+</body>
+</html>

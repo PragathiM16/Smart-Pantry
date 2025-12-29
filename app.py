@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, session
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
+from datetime import datetime
 from bson.objectid import ObjectId
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
@@ -10,57 +10,65 @@ import urllib.parse
 import os
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "SmartPantry")
+app.secret_key = "SmartPantry"
 
-# ---------------- CONFIG (ENV VARIABLES) ----------------
+# ---------------- CONFIG ----------------
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-SENDER_EMAIL = os.getenv("SENDER_EMAIL")
-PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
-MONGO_URI = os.getenv("MONGO_URI")
+SENDER_EMAIL = "smartpantry28@gmail.com"
+MONGO_URI = "mongodb://localhost:27017/"
+PIXABAY_API_KEY = "53925676-923ada41045b5b093107c781b"
 
 # ---------------- DATABASE ----------------
-try:
-    client = MongoClient(MONGO_URI)
-    db = client.smart_pantry
-    users = db.users
-    items = db.items
-except Exception as e:
-    print("MongoDB connection error:", e)
+client = MongoClient(MONGO_URI)
+db = client.smart_pantry
+users = db.users
+items = db.items
 
 # ---------------- EMAIL ----------------
 def send_email(to_email, subject, content):
-    if not SENDGRID_API_KEY or not SENDER_EMAIL:
-        return
-    try:
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        message = Mail(
-            from_email=SENDER_EMAIL,
-            to_emails=to_email,
-            subject=subject,
-            plain_text_content=content
-        )
-        sg.send(message)
-    except Exception as e:
-        print("Email error:", e)
+    if not SENDGRID_API_KEY:
+        raise RuntimeError("SENDGRID_API_KEY not set")
 
-# ---------------- IMAGE ----------------
+    sg = SendGridAPIClient(SENDGRID_API_KEY)
+    message = Mail(
+        from_email=SENDER_EMAIL,
+        to_emails=to_email,
+        subject=subject,
+        plain_text_content=content
+    )
+    sg.send(message)
+
+# ---------------- IMAGE FETCH (PIXABAY) ----------------
 def get_food_image(food_name):
     if not PIXABAY_API_KEY:
         return "/static/food.png"
+
+    query = urllib.parse.quote(food_name)
+    url = "https://pixabay.com/api/"
+    params = {
+        "key": PIXABAY_API_KEY,
+        "q": query,
+        "image_type": "photo",
+        "category": "food",
+        "per_page": 3
+    }
     try:
-        q = urllib.parse.quote(food_name)
-        url = f"https://pixabay.com/api/?key={PIXABAY_API_KEY}&q={q}&image_type=photo&per_page=3"
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
+        response = requests.get(url, params=params)
         data = response.json()
         if data.get("hits"):
             return data["hits"][0]["webformatURL"]
     except Exception as e:
-        print("Pixabay error:", e)
+        print("Pixabay Error:", e)
+
     return "/static/food.png"
 
-# ---------------- HOME ----------------
+# ---------------- WELCOME PAGE ----------------
 @app.route("/")
+def welcome():
+    return render_template("welcome.html")
+
+# ---------------- HOME PAGE ----------------
+@app.route("/index")
 def index():
     return render_template("index.html")
 
@@ -68,20 +76,20 @@ def index():
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
-        username = request.form["username"]
-        email = request.form["email"]
-        password = request.form["password"]
-
-        if users.find_one({"username": username}):
+        if users.find_one({"username": request.form["username"]}):
             return "User already exists"
 
         users.insert_one({
-            "username": username,
-            "email": email,
-            "password": generate_password_hash(password)
+            "username": request.form["username"],
+            "email": request.form["email"],
+            "password": generate_password_hash(request.form["password"])
         })
 
-        send_email(email, "Welcome to Smart Pantry", "Account created successfully 🌱")
+        send_email(
+            request.form["email"],
+            "Welcome to Smart Pantry",
+            "Account created successfully 🌱"
+        )
         return redirect("/login")
 
     return render_template("signup.html")
@@ -113,26 +121,27 @@ def pantry():
     updated_items = []
 
     for item in user_items:
-        try:
-            expiry = datetime.strptime(item["expiry"], "%Y-%m-%d").date()
-        except:
-            continue
-
+        expiry = datetime.strptime(item["expiry"], "%Y-%m-%d").date()
         days_left = (expiry - today).days
 
-        if expiry < today:
+        if days_left < 0:
             items.delete_one({"_id": item["_id"]})
             continue
 
+        stats["total"] += 1
         if days_left <= 7:
             stats["soon"] += 1
         else:
             stats["safe"] += 1
 
-        stats["total"] += 1
+        if not item.get("image"):
+            item["image"] = get_food_image(item["name"])
+            items.update_one(
+                {"_id": item["_id"]},
+                {"$set": {"image": item["image"]}}
+            )
 
         item["days_left"] = days_left
-        item["image"] = item.get("image") or get_food_image(item["name"])
         updated_items.append(item)
 
         if days_left == 7:
@@ -140,12 +149,7 @@ def pantry():
         if days_left == 1:
             send_email(user["email"], "Urgent Alert ⚠️", f"{item['name']} expires tomorrow")
 
-    return render_template(
-        "pantry.html",
-        items=updated_items,
-        stats=stats,
-        today=today
-    )
+    return render_template("pantry.html", items=updated_items, stats=stats)
 
 # ---------------- ADD ITEM ----------------
 @app.route("/add", methods=["POST"])
@@ -153,23 +157,23 @@ def add_item():
     if "user" not in session:
         return redirect("/login")
 
+    food_name = request.form["name"]
+
     items.insert_one({
         "user": session["user"],
-        "name": request.form["name"],
+        "name": food_name,
         "expiry": request.form["expiry"],
-        "image": get_food_image(request.form["name"]),
+        "image": get_food_image(food_name),
         "added_on": datetime.today().strftime("%Y-%m-%d")
     })
+
     return redirect("/pantry")
 
-# ---------------- DELETE ITEM ----------------
+# ---------------- DELETE ----------------
 @app.route("/delete/<id>")
 def delete_item(id):
     if "user" in session:
-        try:
-            items.delete_one({"_id": ObjectId(id)})
-        except:
-            pass
+        items.delete_one({"_id": ObjectId(id)})
     return redirect("/pantry")
 
 # ---------------- LOGOUT ----------------
@@ -178,7 +182,8 @@ def logout():
     session.clear()
     return redirect("/")
 
-# ---------------- RUN (Render safe) ----------------
+# ---------------- RUN ----------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True)
+
+    

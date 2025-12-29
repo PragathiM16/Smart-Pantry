@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome to Smart Pantry</title>
+
+<style>
+  body {
+    font-family: 'Segoe UI', 'Poppins', Arial, sans-serif;
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+    color: #ffffff;
+    background: url('/static/welcome.png') no-repeat center center fixed;
+    background-size: cover;
+    overflow: hidden;
+  }
+
+  /* Dark overlay */
+  body::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 0;
+  }
+
+  h1, p, a.button {
+    position: relative;
+    z-index: 1;
+  }
+
+  h1 {
+    font-size: 56px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    margin-bottom: 18px;
+    color: #ffffff;
+    text-transform: uppercase;
+    text-shadow:
+      0 4px 15px rgba(0,0,0,0.8),
+      0 0 25px rgba(255,255,255,0.15);
+  }
+
+  p {
+    font-size: 22px;
+    font-weight: 300;
+    margin-bottom: 45px;
+    color: #ffffff;
+    opacity: 0.95;
+    letter-spacing: 0.5px;
+  }
+
+  a.button {
+    background-color: #ffffff;
+    color: #27ae60;
+    padding: 16px 38px;
+    border-radius: 10px;
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 18px;
+    letter-spacing: 1px;
+    transition: all 0.25s ease;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+
+  a.button:hover {
+    background-color: #f1f1f1;
+    transform: translateY(-4px);
+    box-shadow: 0 14px 35px rgba(0,0,0,0.5);
+  }
+</style>
+</head>
+
+<body>
+  <h1>Welcome to Smart Pantry</h1>
+  <a class="button" href="/index">Sign In</a>
+</body>
+</html>

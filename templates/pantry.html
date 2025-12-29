@@ -1,9 +1,62 @@
+
 <!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="/static/style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin:0; padding:0; color:black; }
+  .overlay { max-width: 1100px; margin: auto; padding: 20px; }
+  h2 { text-align: center; color: #27ae60; margin-bottom: 20px; }
+
+  .stats { display: flex; justify-content: space-around; margin-bottom: 40px; }
+  .stats div { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; flex:1; margin:0 10px; font-size:16px; transition: transform 0.2s; }
+  .stats div:hover { transform: translateY(-5px); }
+  .stats div b { font-size: 28px; display:block; margin-bottom:5px; color:black; }
+  .stat-title { font-weight:bold; margin-bottom:5px; display:block; }
+  .stat-desc { font-size: 14px; color: #000000; }
+
+  #chart-container { background: #fff; padding: 20px; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+  canvas { max-width: 100%; height: 350px !important; }
+
+  .card { background: #fff; padding: 20px; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+  .card label { display: block; margin: 10px 0 5px; font-weight: bold; }
+  .card input { width: 100%; padding: 8px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #ccc; }
+  .card button { background-color: #27ae60; color: white; padding: 10px 20px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; }
+  .card button:hover { background-color: #219150; }
+
+  #search { width: 100%; padding: 10px; margin-bottom: 25px; border-radius:5px; border:1px solid #ccc; }
+
+  .pantry-item { display: flex; background: #fff; padding: 15px; margin-bottom: 15px; border-radius: 10px; box-shadow: 0 3px 5px rgba(0,0,0,0.1); align-items:center; gap:15px; }
+  .pantry-item img { width: 80px; height: 80px; border-radius: 10px; object-fit: cover; }
+  .pantry-item div { flex:1; }
+  .pantry-item b { font-size:18px; }
+  .pantry-item a { color: #e74c3c; text-decoration:none; font-weight:bold; }
+  .pantry-item a:hover { text-decoration:underline; }
+
+  .danger { border-left: 5px solid #e74c3c; }
+  .warning { border-left: 5px solid #e67e22; }
+  .safe { border-left: 5px solid #2ecc71; }
+
+  .progress { background: #eee; border-radius: 5px; overflow: hidden; margin-top: 5px; height: 10px; }
+  .progress-bar { height: 10px; }
+
+  .logout-btn { display:block; width: 100%; text-align:center; background:#c0392b; color:white; padding:10px 0; border:none; border-radius:5px; margin-top:40px; cursor:pointer; font-weight:bold; text-decoration:none; }
+  .logout-btn:hover { background:#a93226; }
+
+  .section-title { font-size: 20px; font-weight:bold; margin: 30px 0 15px; color:#030303; border-bottom: 2px solid #ccc; padding-bottom:5px; }
+
+  .alerts { margin-bottom:20px; }
+  .alert { padding:12px; border-radius:5px; margin-bottom:12px; color:white; font-weight:bold; }
+  .alert-danger { background:#e74c3c; }
+  .alert-warning { background:#e67e22; }
+  .alert-safe { background:#2ecc71; }
+
+  .activity { background:#fff; padding:20px; border-radius:10px; box-shadow:0 3px 5px rgba(0,0,0,0.1); margin-bottom:30px; }
+  .activity-item { margin-bottom:10px; font-size:14px; color:#000000; }
+</style>
 </head>
 
 <body>
@@ -11,16 +64,42 @@
 
 <h2>🥗 My Pantry</h2>
 
-<!-- DASHBOARD -->
+<!-- DASHBOARD STATS -->
 <div class="stats">
-  <div>Total Items<br><b>{{ stats.total }}</b></div>
-  <div>Expiring Soon<br><b>{{ stats.soon }}</b></div>
-  <div>Safe Items<br><b>{{ stats.safe }}</b></div>
+  <div>
+    <span class="stat-title">Total Items</span>
+    <b>{{ stats.total }}</b>
+    <span class="stat-desc">All items currently in your pantry</span>
+  </div>
+  <div>
+    <span class="stat-title">Expiring Soon</span>
+    <b>{{ stats.soon }}</b>
+    <span class="stat-desc">Items that will expire within a week</span>
+  </div>
+  <div>
+    <span class="stat-title">Safe Items</span>
+    <b>{{ stats.safe }}</b>
+    <span class="stat-desc">Items safe for more than 7 days</span>
+  </div>
 </div>
 
-<!-- GRAPH -->
-<canvas id="chart"></canvas>
+<!-- ALERTS -->
+<div class="alerts">
+{% for item in items %}
+  {% if item.days_left <= 3 %}
+    <div class="alert alert-danger">{{ item.name }} expires in {{ item.days_left }} day(s)! Take action now.</div>
+  {% elif item.days_left <= 7 %}
+    <div class="alert alert-warning">{{ item.name }} expires in {{ item.days_left }} day(s). Consider using soon.</div>
+  {% endif %}
+{% endfor %}
+{% if stats.total == 0 %}
+  <div class="alert alert-safe">Your pantry is empty. Add some items to start tracking! 🥗</div>
+{% endif %}
+</div>
 
+<!-- PIE CHART -->
+<div id="chart-container">
+<canvas id="chart"></canvas>
 <script>
 new Chart(document.getElementById("chart"), {
   type: "pie",
@@ -28,14 +107,24 @@ new Chart(document.getElementById("chart"), {
     labels: ["Safe", "Expiring Soon"],
     datasets: [{
       data: [{{ stats.safe }}, {{ stats.soon }}],
-      backgroundColor: ["#2ecc71", "#e67e22"]
+      backgroundColor: ["#2ecc71", "#e67e22"],
+      borderWidth: 1
     }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom' },
+      title: { display: true, text: 'Pantry Status Overview', font:{size:18} }
+    }
   }
 });
 </script>
+</div>
 
 <!-- ADD ITEM -->
 <div class="card">
+<div class="section-title">Add New Item</div>
 <form method="POST" action="/add">
 <label>Food Item</label>
 <input name="name" required>
@@ -46,24 +135,42 @@ new Chart(document.getElementById("chart"), {
 </div>
 
 <!-- SEARCH -->
+<div class="section-title">Search Pantry</div>
 <input type="text" id="search" placeholder="Search food..." onkeyup="filter()">
 
 <!-- ITEMS -->
+<div class="section-title">Your Items</div>
 {% for item in items %}
 <div class="pantry-item {{ 'danger' if item.days_left <= 3 else 'warning' if item.days_left <= 7 else 'safe' }}">
-<img src="{{ item.image }}">
+<img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy"
+     onerror="this.src='/static/food.png'">
 <div>
 <b>{{ item.name }}</b><br>
 Expires: {{ item.expiry }}<br>
-Days left: {{ item.days_left }}<br>
+Days left: {{ item.days_left }}
+
+<div class="progress">
+  {% set percent = 100 - (item.days_left / 30 * 100) %}
+  <div class="progress-bar" style="width:{{ percent }}%; background-color: {{ '#e74c3c' if item.days_left <= 3 else '#e67e22' if item.days_left <=7 else '#2ecc71' }}"></div>
+</div>
+
 <a href="/delete/{{ item._id }}">🗑 Remove</a>
 </div>
 </div>
 {% endfor %}
 
-<a href="/logout"><button>Logout</button></a>
-
+<!-- ACTIVITY -->
+<div class="section-title">Recent Activity</div>
+<div class="activity">
+{% for item in items %}
+  <div class="activity-item">Added <b>{{ item.name }}</b> on {{ item.added_on }}. Expires in {{ item.days_left }} day(s).</div>
+{% endfor %}
+{% if stats.total == 0 %}
+  <div class="activity-item">No recent activity yet.</div>
+{% endif %}
 </div>
+
+<a href="/logout" class="logout-btn">Logout</a>
 
 <script>
 function filter(){
@@ -74,5 +181,6 @@ function filter(){
 }
 </script>
 
+</div>
 </body>
 </html>

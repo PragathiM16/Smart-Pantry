@@ -1,0 +1,5 @@
+Flask==2.3.3
+pymongo
+dnspython
+sendgrid
+python-dotenv
